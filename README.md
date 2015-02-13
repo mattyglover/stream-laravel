@@ -28,7 +28,7 @@ Begin by installing this package through Composer. Edit your project's composer.
 
 ```
 "require": {
-    "get-stream/stream-laravel": "~1.0"
+    "get-stream/stream-laravel": "~2.1"
 },
 ```
 
@@ -63,6 +63,16 @@ php artisan config:publish get-stream/stream-laravel
 ```
 
 Login with Github on getstream.io and set ```api_key``` and ```api_secret``` in the stream-laravel config file as their are shown in your dashboard.
+
+for example:
+```php
+return array(
+    'api_key' => 'API_KEY',
+    'api_secret' => 'API_SECRET',
+    'api_app_id' => 'API_APP_ID',
+    'location' => 'us-east'
+)
+```
 
 ###Eloquent integration
 
