@@ -1,5 +1,6 @@
 <?php namespace GetStream\StreamLaravel;
 
+use GetStream\StreamLaravel\EnrichedActivity;
 use GetStream\StreamLaravel\Exceptions\MissingDataException;
 
 class Enrich {
@@ -50,28 +51,36 @@ class Enrich {
                 $with = $content_type_model->activityLazyLoading;
             }
             $fetched = $this->fromDb($content_type_model, array_keys($content_ids), $with);
-            if (count($fetched) < count(array_keys($content_ids))) {
-                $missing_ids = array_values(array_diff(array_keys($content_ids), array_keys($fetched)));
-                $pretty_ids = var_export($missing_ids, true);
-                throw new MissingDataException("Some data in this feed is not in the database: model: {$content_type} ids:{$pretty_ids}");
-            }
             $objects[$content_type] = $fetched;
         }
         return $objects;
+    }
+
+    private function wrapActivities($activities)
+    {
+        $wrappedActivities = array();
+        foreach ($activities as $i => $activity) {
+            $wrappedActivities[] = new EnrichedActivity($activity);
+        }
+        return $wrappedActivities;
     }
 
     private function injectObjects(&$activities, $objects)
     {
         foreach ($activities as $key => $activity) {
             foreach ($this->fields as $field) {
-                if (!array_key_exists($field, $activity))
+                if (!isset($activity[$field]))
                     continue;
                 $value = $activity[$field];
                 $reference = explode(':', $value);
-                if (!array_key_exists($reference[0], $objects))
+                if (!array_key_exists($reference[0], $objects)) {
+                    $activity->trackNotEnrichedField($reference[0], $reference[1]);
                     continue;
-                if (!array_key_exists($reference[1], $objects[$reference[0]]))
+                }
+                if (!array_key_exists($reference[1], $objects[$reference[0]])) {
+                    $activity->trackNotEnrichedField($reference[0], $reference[1]);
                     continue;
+                }
                 $activities[$key][$field] = $objects[$reference[0]][$reference[1]];
             }
         }
@@ -80,6 +89,8 @@ class Enrich {
 
     public function enrichActivities($activities)
     {
+        $activities = $this->wrapActivities($activities);
+
         if (count($activities) === 0) {
             return $activities;
         }
@@ -92,6 +103,10 @@ class Enrich {
 
     public function enrichAggregatedActivities($aggregatedActivities)
     {
+        foreach ($aggregatedActivities as $i => $aggregated) {
+            $aggregated['activities'] = $this->wrapActivities($aggregated['activities']);
+        }
+
         if (count($aggregatedActivities) === 0) {
             return $aggregatedActivities;
         }
