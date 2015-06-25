@@ -18,7 +18,8 @@ class Enrich {
         $results = array();
         $pkName = (new $model())->getKeyName();
         $query = $model::with($with)->whereIn($pkName, $ids);
-        if (in_array('Illuminate\Database\Eloquent\SoftDeletingTrait', class_uses(get_class($model))) && $this->withTrashed) // previous withTrash method deprecated in Laravel 4.2
+//        if (in_array('Illuminate\Database\Eloquent\SoftDeletingTrait', class_uses(get_class($model))) && $this->withTrashed) // previous withTrash method deprecated in Laravel 4.2
+        if (in_array('Illuminate\Database\Eloquent\SoftDeletes', class_uses(get_class($model))) && $this->withTrashed) // previous withTrash method
             $query = $query->withTrashed();
         $objects = $query->get();
         foreach ($objects as $object) {
@@ -34,7 +35,11 @@ class Enrich {
             foreach ($activity as $field=>$value) {
                 if (in_array($field, $this->fields)){
                     $reference = explode(':', $value);
-                    $model_references[$reference[0]][$reference[1]] = 1;
+
+                    if(!str_contains($reference[0],'Musindie\\'))
+                        $model_references['Musindie\\'.$reference[0]][$reference[1]] = 1;
+                    else
+                        $model_references[$reference[0]][$reference[1]] = 1;
                 }
             }
         }
@@ -47,8 +52,18 @@ class Enrich {
         foreach ($references as $content_type => $content_ids) {
             $content_type_model = new $content_type;
             $with = array();
+
+            debug("Property in content_type_model: ".property_exists($content_type_model, 'activityLazyLoading'));
+            debug("Method in content_type_model: ".value(method_exists($content_type_model, 'activityLazyLoading')));
+            debug($content_type_model->activityLazyLoading);
+            debug($content_type_model);
+
+
             if (property_exists($content_type_model, 'activityLazyLoading')) {
                 $with = $content_type_model->activityLazyLoading;
+            }
+            elseif (method_exists($content_type_model, 'activityLazyLoading')) {
+                $with = $content_type_model->activityLazyLoading();
             }
             $fetched = $this->fromDb($content_type_model, array_keys($content_ids), $with);
             $objects[$content_type] = $fetched;
@@ -73,6 +88,9 @@ class Enrich {
                     continue;
                 $value = $activity[$field];
                 $reference = explode(':', $value);
+                if(!str_contains($reference[0],'Musindie\\'))
+                    $reference[0]='Musindie\\'.$reference[0];
+
                 if (!array_key_exists($reference[0], $objects)) {
                     $activity->trackNotEnrichedField($reference[0], $reference[1]);
                     continue;
