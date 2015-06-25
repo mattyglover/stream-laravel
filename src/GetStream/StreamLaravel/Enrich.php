@@ -18,8 +18,8 @@ class Enrich {
         $results = array();
         $pkName = (new $model())->getKeyName();
         $query = $model::with($with)->whereIn($pkName, $ids);
-//        if (in_array('Illuminate\Database\Eloquent\SoftDeletingTrait', class_uses(get_class($model))) && $this->withTrashed) // previous withTrash method deprecated in Laravel 4.2
-        if (in_array('Illuminate\Database\Eloquent\SoftDeletes', class_uses(get_class($model))) && $this->withTrashed) // previous withTrash method
+
+        if (in_array('Illuminate\Database\Eloquent\SoftDeletes', class_uses(get_class($model))) && $this->withTrashed) // previous SoftDeletingTrait replaced woith SoftDeletes in Laravel 5
             $query = $query->withTrashed();
         $objects = $query->get();
         foreach ($objects as $object) {
@@ -53,11 +53,8 @@ class Enrich {
             $content_type_model = new $content_type;
             $with = array();
 
-            debug("Property in content_type_model: ".property_exists($content_type_model, 'activityLazyLoading'));
-            debug("Method in content_type_model: ".value(method_exists($content_type_model, 'activityLazyLoading')));
-            debug($content_type_model->activityLazyLoading);
-            debug($content_type_model);
-
+            //debug("Property in content_type_model: ".$content_type.'='.property_exists($content_type_model, 'activityLazyLoading'));
+            //debug("Method in content_type_model: ".$content_type.'='.value(method_exists($content_type_model, 'activityLazyLoading')));
 
             if (property_exists($content_type_model, 'activityLazyLoading')) {
                 $with = $content_type_model->activityLazyLoading;
@@ -65,6 +62,7 @@ class Enrich {
             elseif (method_exists($content_type_model, 'activityLazyLoading')) {
                 $with = $content_type_model->activityLazyLoading();
             }
+
             $fetched = $this->fromDb($content_type_model, array_keys($content_ids), $with);
             $objects[$content_type] = $fetched;
         }
@@ -88,6 +86,7 @@ class Enrich {
                     continue;
                 $value = $activity[$field];
                 $reference = explode(':', $value);
+
                 if(!str_contains($reference[0],'Musindie\\'))
                     $reference[0]='Musindie\\'.$reference[0];
 
